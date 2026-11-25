@@ -9,9 +9,8 @@ interface SeatProps {
 
 /**
  * STAGE 1 — Take a seat.
- * The recipient physically drags a stool to the counter. The booth only
- * "settles" once they let go near the counter — a small act of commitment
- * that the diner acknowledges. Touch + mouse via pointer events.
+ * Drag the stool up to the counter. Letting go near the counter "seats" you.
+ * Works with mouse and touch.
  */
 export function Seat({ data, onSeated }: SeatProps) {
   const zoneRef = useRef<HTMLDivElement>(null)
@@ -29,20 +28,23 @@ export function Seat({ data, onSeated }: SeatProps) {
     const zone = zoneRef.current?.getBoundingClientRect()
     const stool = stoolRef.current?.getBoundingClientRect()
     if (!zone || !stool) return
+
     const cx = stool.left + stool.width / 2
     const cy = stool.top + stool.height / 2
+
+    // Forgiving hit area around the drop zone.
     const inside =
-      cx > zone.left - 40 &&
-      cx < zone.right + 40 &&
+      cx > zone.left - 60 &&
+      cx < zone.right + 60 &&
       cy > zone.top - 60 &&
       cy < zone.bottom + 60
+
     if (inside) {
       setSeated(true)
       x.set(0)
       y.set(0)
       window.setTimeout(onSeated, 1400)
     } else {
-      // Snap home with a little attitude.
       x.set(0)
       y.set(0)
       setNudge((n) => n + 1)
@@ -70,15 +72,21 @@ export function Seat({ data, onSeated }: SeatProps) {
       <div className="counter-scene">
         <div className="counter-top" />
         <div className="counter-front" />
+
         <motion.div
           ref={stoolRef}
           className={`stool ${seated ? 'is-seated' : ''}`}
           drag={!seated}
-          dragConstraints={{ left: -220, right: 220, top: -120, bottom: 160 }}
-          dragElastic={0.18}
+          dragConstraints={{
+            left: -260,
+            right: 260,
+            top: -160,
+            bottom: 220,
+          }}
+          dragElastic={0.25}
           dragMomentum={false}
           onDragEnd={onDragEnd}
-          style={{ x: sx, y: sy, rotate: tilt }}
+          style={{ x: sx, y: sy, rotate: tilt, touchAction: 'none' }}
           whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
           animate={
             seated
@@ -93,9 +101,10 @@ export function Seat({ data, onSeated }: SeatProps) {
           <div className="stool-legs" />
         </motion.div>
 
-        {/* Drop target hint ring on the floor by the counter */}
+        {/* Drop target at the counter surface */}
         {!seated && (
           <motion.div
+            ref={zoneRef}
             className="drop-zone"
             animate={{ opacity: [0.25, 0.5, 0.25] }}
             transition={{ repeat: Infinity, duration: 2 }}
@@ -103,8 +112,6 @@ export function Seat({ data, onSeated }: SeatProps) {
             <span>seat here</span>
           </motion.div>
         )}
-        {/* Invisible anchor that marks the counter drop area */}
-        <div ref={zoneRef} className="zone-anchor" aria-hidden="true" />
       </div>
 
       {seated && (
